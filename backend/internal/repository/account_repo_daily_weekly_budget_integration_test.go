@@ -35,6 +35,8 @@ func TestDailyWeeklyBudgetConcurrentPersistenceAndStaleAdminEdit(t *testing.T) {
 	stale.Name = "renamed during usage updates"
 	stale.Extra[service.OpenAIDailyWeeklyBudgetStateKey] = map[string]any{"used_percent": 0}
 	stale.Extra[service.OpenAIDailyWeeklyBudgetLimitKey] = 10.0
+	stale.Extra[service.OpenAIWeeklyBudgetCycleHoursKey] = 6.0
+	stale.Extra[service.OpenAIWeeklyBudgetResetHourKey] = 8.0
 	var wg sync.WaitGroup
 	errors := make(chan error, 41)
 	for i := 1; i <= 40; i++ {
@@ -63,6 +65,11 @@ func TestDailyWeeklyBudgetConcurrentPersistenceAndStaleAdminEdit(t *testing.T) {
 	require.Equal(t, 60.0, got.Extra["codex_7d_used_percent"])
 	require.Equal(t, stale.Name, got.Name)
 	require.Equal(t, 10.0, got.Extra[service.OpenAIDailyWeeklyBudgetLimitKey])
+	require.Equal(t, 6.0, got.Extra[service.OpenAIWeeklyBudgetCycleHoursKey])
+	require.Equal(t, 8.0, got.Extra[service.OpenAIWeeklyBudgetResetHourKey])
+	require.Equal(t, 1, state.HistoryVersion)
+	require.Len(t, state.HourlyUsage, 1)
+	require.Equal(t, 40.0, state.HourlyUsage[0].UsedPercent, "hourly history is persisted atomically with the daily aggregate")
 	// A fresh repository instance reads the same durable ledger after a restart.
 	restarted := newAccountRepositoryWithSQL(client, integrationDB, nil)
 	reloaded, err := restarted.GetByID(ctx, account.ID)

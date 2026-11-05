@@ -6,6 +6,7 @@ import { opsAPI } from '@/api/admin/ops'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import OpenAIWeeklyBudgetCycleSettings from '@/components/account/OpenAIWeeklyBudgetCycleSettings.vue'
 import type { OpsAlertRuntimeSettings, EmailNotificationConfig, AlertSeverity, OpsAdvancedSettings, OpsMetricThresholds } from '../types'
 
 const { t } = useI18n()
@@ -58,6 +59,10 @@ async function loadAllSettings() {
     }
     if (advancedSettings.value) {
       advancedSettings.value.openai_account_quota_auto_pause.daily_weekly_budget_percent ??= 0
+      if (!advancedSettings.value.openai_account_quota_auto_pause.weekly_budget_cycle_hours) {
+        advancedSettings.value.openai_account_quota_auto_pause.weekly_budget_cycle_hours = 24
+      }
+      advancedSettings.value.openai_account_quota_auto_pause.weekly_budget_reset_hour ??= 0
     }
     // 如果后端返回了阈值，使用后端的值；否则保持默认值
     if (thresholds && Object.keys(thresholds).length > 0) {
@@ -182,6 +187,12 @@ const validation = computed(() => {
     const dailyBudget = advancedSettings.value.openai_account_quota_auto_pause.daily_weekly_budget_percent ?? 0
     if (!Number.isFinite(dailyBudget) || dailyBudget < 0 || dailyBudget > 100) {
       errors.push(t('admin.accounts.dailyWeeklyBudget.invalid'))
+    }
+    const cycleHours = advancedSettings.value.openai_account_quota_auto_pause.weekly_budget_cycle_hours ?? 24
+    const resetHour = advancedSettings.value.openai_account_quota_auto_pause.weekly_budget_reset_hour ?? 0
+    if (!Number.isInteger(cycleHours) || cycleHours < 1 || cycleHours > 168 ||
+        !Number.isInteger(resetHour) || resetHour < 0 || resetHour > 23) {
+      errors.push(t('admin.accounts.dailyWeeklyBudget.invalidCycle'))
     }
     if (default_threshold_5h < 0 || default_threshold_5h > 1 || default_threshold_7d < 0 || default_threshold_7d > 1) {
       errors.push(t('admin.ops.settings.validation.openaiQuotaAutoPauseRange'))
@@ -555,6 +566,13 @@ async function saveAllSettings() {
                 data-testid="ops-daily-weekly-budget-limit"
               />
               <p class="input-hint">{{ t('admin.accounts.dailyWeeklyBudget.globalHint') }}</p>
+              <OpenAIWeeklyBudgetCycleSettings
+                :cycle-hours="advancedSettings.openai_account_quota_auto_pause.weekly_budget_cycle_hours"
+                :reset-hour="advancedSettings.openai_account_quota_auto_pause.weekly_budget_reset_hour"
+                :allow-inherit="false"
+                @update:cycle-hours="advancedSettings.openai_account_quota_auto_pause.weekly_budget_cycle_hours = $event ?? 24"
+                @update:reset-hour="advancedSettings.openai_account_quota_auto_pause.weekly_budget_reset_hour = $event ?? 0"
+              />
             </div>
           </div>
 

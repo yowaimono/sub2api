@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import OpenAIWeeklyBudgetCycleSettings from './OpenAIWeeklyBudgetCycleSettings.vue'
 
-const props = defineProps<{ modelValue: number | null }>()
-const emit = defineEmits<{ 'update:modelValue': [value: number | null] }>()
+const props = defineProps<{ modelValue: number | null; cycleHours?: number | null; resetHour?: number | null }>()
+const emit = defineEmits<{
+  'update:modelValue': [value: number | null]
+  'update:cycleHours': [value: number | null]
+  'update:resetHour': [value: number | null]
+}>()
 const { t } = useI18n()
 const mode = computed(() => props.modelValue == null ? 'inherit' : props.modelValue === 0 ? 'disabled' : 'custom')
 function changeMode(event: Event) {
@@ -36,5 +41,10 @@ function changeLimit(event: Event) {
       @input="changeLimit"
     />
     <p class="input-hint">{{ t('admin.accounts.dailyWeeklyBudget.hint') }}</p>
+    <OpenAIWeeklyBudgetCycleSettings
+      v-if="mode !== 'disabled'" :cycle-hours="cycleHours" :reset-hour="resetHour"
+      @update:cycle-hours="emit('update:cycleHours', $event)"
+      @update:reset-hour="emit('update:resetHour', $event)"
+    />
   </div>
 </template>
