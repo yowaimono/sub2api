@@ -1,0 +1,125 @@
+name: Wengao Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Immutable production tag: prod-vYYYY.MM.DD.N'
+        required: true
+        type: string
+      operation:
+        description: 'Deploy this tag, or roll back its deployment'
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - rollback
+
+concurrency:
+  group: wengao-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.repository == 'yowaimono/sub2api' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_OPERATION: ${{ inputs.operation }}
+      DEPLOY_HOST: ${{ vars.WENGAO_DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ vars.WENGAO_DEPLOY_PORT }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Validate release source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^prod-v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*$ ]]
+          [[ "$RELEASE_OPERATION" == deploy || "$RELEASE_OPERATION" == rollback ]]
+          sha=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/yowaimono/sub2api:$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          git checkout --detach "$sha"
+      - name: Verify deployment and rollback regression cases
+        if: inputs.operation == 'deploy'
+        run: docker run --rm --network none --mount "type=bind,source=$PWD/deploy/wengao,target=/src,readonly" postgres:18-alpine bash /src/receive-release-test.sh
+      - uses: docker/setup-buildx-action@v3
+        if: inputs.operation == 'deploy'
+      - name: Build Linux image
+        if: inputs.operation == 'deploy'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ steps.source.outputs.image }}
+          build-args: |
+            VERSION=${{ inputs.tag }}
+            COMMIT=${{ steps.source.outputs.sha }}
+            GOPROXY=https://proxy.golang.org,direct
+            GOSUMDB=sum.golang.org
+          labels: |
+            org.opencontainers.image.source=https://github.com/yowaimono/sub2api
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+            org.opencontainers.image.version=${{ inputs.tag }}
+          cache-from: type=gha,scope=wengao-production
+          cache-to: type=gha,mode=max,scope=wengao-production
+      - name: Verify binary and publish immutable image
+        if: inputs.operation == 'deploy'
+        env:
+          IMAGE: ${{ steps.source.outputs.image }}
+          RELEASE_SHA: ${{ steps.source.outputs.sha }}
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint /app/sub2api "$IMAGE" -version 2>&1 | tee "$RUNNER_TEMP/sub2api-version.txt"
+          grep -F "$RELEASE_SHA" "$RUNNER_TEMP/sub2api-version.txt"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          if docker manifest inspect "$IMAGE" >/dev/null 2>&1; then
+            echo 'Refusing to overwrite an existing production image tag.' >&2
+            exit 1
+          fi
+          docker push "$IMAGE"
+      - name: Configure restricted SSH deployment key
+        env:
+          DEPLOY_KEY: ${{ secrets.WENGAO_DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.WENGAO_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_KEY"
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_PORT"
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/wengao_deploy"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/wengao_deploy" "$HOME/.ssh/known_hosts"
+      - name: Deploy application with backup and automatic rollback
+        if: inputs.operation == 'deploy'
+        env:
+          IMAGE: ${{ steps.source.outputs.image }}
+          RELEASE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          docker save "$IMAGE" | gzip -1 | ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=8 -i "$HOME/.ssh/wengao_deploy" -p "$DEPLOY_PORT" "root@$DEPLOY_HOST" "deploy $RELEASE_TAG $RELEASE_SHA"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors --max-time 20 https://aiaccpool.iviker.com/health
+      - name: Roll back selected deployment
+        if: inputs.operation == 'rollback'
+        run: |
+          set -euo pipefail
+          ssh -T -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$HOME/.ssh/wengao_deploy" -p "$DEPLOY_PORT" "root@$DEPLOY_HOST" "rollback $RELEASE_TAG"
+          curl --fail --silent --show-error --max-time 20 https://aiaccpool.iviker.com/health
+      - name: Remove runner SSH credentials
+        if: always()
+        run: rm -f "$HOME/.ssh/wengao_deploy"
