@@ -26,7 +26,8 @@ func TestDailyWeeklyBudgetConcurrentPersistenceAndStaleAdminEdit(t *testing.T) {
 		Extra:       map[string]any{"codex_7d_used_percent": 20.0, "codex_usage_updated_at": base.Format(time.RFC3339Nano), "codex_7d_reset_at": reset.Format(time.RFC3339Nano)},
 	})
 	t.Cleanup(func() {
-		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM scheduler_outbox WHERE account_id = $1", account.ID)
+		_, _ = integrationDB.ExecContext(context.Background(), `DELETE FROM scheduler_outbox
+			WHERE account_id = $1 OR payload->'account_ids' @> jsonb_build_array($1::bigint)`, account.ID)
 		_, _ = integrationDB.ExecContext(context.Background(), "DELETE FROM accounts WHERE id = $1", account.ID)
 	})
 	stale, err := repo.GetByID(ctx, account.ID)
@@ -80,4 +81,19 @@ func TestDailyWeeklyBudgetConcurrentPersistenceAndStaleAdminEdit(t *testing.T) {
 	after, ok := service.ReadOpenAIDailyWeeklyBudgetState(got.Extra)
 	require.True(t, ok)
 	require.Equal(t, state, after)
+	// Refreshing credentials keeps the budget; replacing the upstream account
+	// must discard the previous identity's ledger and canonical usage baseline.
+	got.Credentials["access_token"] = "rotated-token"
+	require.NoError(t, repo.Update(ctx, got))
+	got, err = repo.GetByID(ctx, account.ID)
+	require.NoError(t, err)
+	afterRotation, ok := service.ReadOpenAIDailyWeeklyBudgetState(got.Extra)
+	require.True(t, ok)
+	require.Equal(t, state, afterRotation)
+	got.Credentials["chatgpt_account_id"] = "replacement-account"
+	require.NoError(t, repo.Update(ctx, got))
+	got, err = repo.GetByID(ctx, account.ID)
+	require.NoError(t, err)
+	require.NotContains(t, got.Extra, service.OpenAIDailyWeeklyBudgetStateKey)
+	require.NotContains(t, got.Extra, "codex_7d_used_percent")
 }

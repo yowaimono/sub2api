@@ -67,3 +67,12 @@ No database migration or new infrastructure is required. Deploy the application
 and set the desired global default or individual overrides. To disable the
 feature, set the global default to 0 and remove/disable positive account overrides.
 Existing 5h/7d cumulative thresholds and other eligibility checks still apply.
+
+## Persistence regression test
+
+From `backend`, run `go test -tags integration ./internal/repository -run
+TestDailyWeeklyBudgetConcurrentPersistenceAndStaleAdminEdit -count=1`. The harness
+starts isolated PostgreSQL and Redis containers and applies migrations. Optional
+`SUB2API_TEST_POSTGRES_IMAGE` and `SUB2API_TEST_REDIS_IMAGE` environment variables
+allow locally available test images. On Docker Desktop, set
+`TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1` if the IPv6 localhost forwarding fails.
