@@ -571,7 +571,7 @@ func buildOpenAIAutoResetUsageUpdates(usage *OpenAIQuotaUsage, now time.Time) ma
 		return nil
 	}
 	rateLimit := usage.RateLimit
-	snapshot := &OpenAICodexUsageSnapshot{UpdatedAt: now.UTC().Format(time.RFC3339)}
+	snapshot := &OpenAICodexUsageSnapshot{UpdatedAt: now.UTC().Format(time.RFC3339Nano)}
 	applyWindow := func(window *OpenAIRateLimitWindow, primary bool) {
 		if window == nil {
 			return

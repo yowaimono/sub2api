@@ -1,5 +1,17 @@
 export default {
     accounts: {
+      dailyWeeklyBudget: {
+        title: 'Daily weekly-allowance budget (%)',
+        globalTitle: 'Default daily weekly-allowance budget for OpenAI OAuth (%)',
+        globalHint: '0 disables the default. Accounts can override or opt out. Resets at 00:00 UTC+8; measured in percentage points of the total weekly allowance.',
+        inherit: 'Use global default',
+        custom: 'Set an account daily limit',
+        disabled: 'Exempt this account from daily budgets',
+        hint: '10 allows 10 additional weekly percentage points per day: weekly usage increasing from 25% to 35% pauses this account until 00:00 UTC+8. A weekly reset does not refill the daily budget. In-flight requests and delayed upstream reports may cause overshoot.',
+        invalid: 'Daily budget must be a finite number between 0 and 100.',
+        used: 'Weekly allowance used today: {percent} percentage points',
+        usageHint: 'Resets daily at 00:00 UTC+8. Tracks increases in upstream weekly snapshots; the first snapshot establishes a baseline.',
+      },
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

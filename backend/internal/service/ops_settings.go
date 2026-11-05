@@ -439,6 +439,9 @@ func validateOpsAdvancedSettings(cfg *OpsAdvancedSettings) error {
 	if cfg == nil {
 		return errors.New("invalid config")
 	}
+	if !validWeeklyPercent(cfg.OpenAIAccountQuotaAutoPause.DailyWeeklyBudgetPercent) {
+		return errors.New("daily_weekly_budget_percent must be a finite number between 0 and 100")
+	}
 	// 保留天数：0 表示每次清理全部，1-365 表示按天数保留。
 	if cfg.DataRetention.ErrorLogRetentionDays < 0 || cfg.DataRetention.ErrorLogRetentionDays > 365 {
 		return errors.New("error_log_retention_days must be between 0 and 365")

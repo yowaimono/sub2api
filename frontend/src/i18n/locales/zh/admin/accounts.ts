@@ -1,5 +1,17 @@
 export default {
     accounts: {
+      dailyWeeklyBudget: {
+        title: '每日周额度预算 (%)',
+        globalTitle: 'OpenAI OAuth 每日周额度预算默认值 (%)',
+        globalHint: '0 表示关闭。单账号可覆盖或豁免。每天北京时间 00:00 重置，按周总额度的百分点计算。',
+        inherit: '使用全局默认',
+        custom: '设置此账号的每日上限',
+        disabled: '此账号不限制每日预算',
+        hint: '10 表示每天最多新增消耗周总额度的 10 个百分点。例如周用量从 25% 增至 35% 后停调。达到后次日北京时间 00:00 恢复；周额度中途重置不会清空当日消耗。仍在执行的请求和上游用量回报延迟可能导致超出。',
+        invalid: '每日预算必须是 0 到 100 之间的有效数字。',
+        used: '今日消耗周额度 {percent} 个百分点',
+        usageHint: '北京时间每日重置。按上游周用量快照的增量统计；首次快照建立基线。',
+      },
       title: '账号管理',
       description: '管理 AI 平台账号和 Cookie',
       createAccount: '添加账号',

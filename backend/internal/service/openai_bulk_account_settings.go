@@ -25,6 +25,10 @@ func normalizeBulkOpenAISettings(input *BulkUpdateAccountsInput) (bulkOpenAISett
 	if input == nil {
 		return settings, nil
 	}
+	if err := ValidateOpenAIDailyWeeklyBudgetExtra(input.Extra); err != nil {
+		return settings, err
+	}
+	delete(input.Extra, OpenAIDailyWeeklyBudgetStateKey)
 
 	if _, exists := input.Extra[openAILongContextBillingEnabledKey]; exists {
 		settings.longContextBilling = true

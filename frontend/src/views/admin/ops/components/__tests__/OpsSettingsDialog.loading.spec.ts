@@ -35,6 +35,25 @@ async function openDialog() {
 }
 type View = { saveAllSettings: () => Promise<void> }
 describe('ops settings load guard', () => {
+  it('retains custom global daily percentage points and rejects invalid values', async () => {
+    const advanced = {
+      data_retention: { error_log_retention_days: 7, minute_metrics_retention_days: 7, hourly_metrics_retention_days: 7 },
+      openai_account_quota_auto_pause: { default_threshold_5h: 0, default_threshold_7d: 0, daily_weekly_budget_percent: 30 }
+    }
+    opsAPI.getAdvancedSettings.mockResolvedValueOnce(advanced)
+    const wrapper = await openDialog()
+    await flushPromises()
+    await (wrapper.vm as unknown as View).saveAllSettings()
+    expect(opsAPI.updateAdvancedSettings).toHaveBeenCalledWith(expect.objectContaining({
+      openai_account_quota_auto_pause: expect.objectContaining({ daily_weekly_budget_percent: 30 })
+    }))
+    opsAPI.updateAdvancedSettings.mockClear()
+    const state = wrapper.vm as unknown as { advancedSettings: typeof advanced }
+    state.advancedSettings.openai_account_quota_auto_pause.daily_weekly_budget_percent = 101
+    await (wrapper.vm as unknown as View).saveAllSettings()
+    expect(opsAPI.updateAdvancedSettings).not.toHaveBeenCalled()
+  })
+
   beforeEach(() => {
     vi.resetAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})

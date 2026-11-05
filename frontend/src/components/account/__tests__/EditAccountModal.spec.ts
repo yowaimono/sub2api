@@ -330,6 +330,44 @@ function mountModal(account = buildAccount(), renderGroupSelector = false) {
 }
 
 describe('EditAccountModal', () => {
+  it('saves custom daily weekly points without returning server-managed usage', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10, codex_daily_weekly_budget: { day: '2026-11-05', used_percent: 5 } }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-limit"]').setValue('30')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.daily_weekly_budget_percent).toBe(30)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('codex_daily_weekly_budget')
+    wrapper.unmount()
+  })
+
+  it('saves explicit daily budget exemption and can restore inheritance', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-mode"]').setValue('disabled')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.daily_weekly_budget_percent).toBe(0)
+    updateAccountMock.mockClear()
+    await wrapper.get('[data-testid="daily-weekly-budget-mode"]').setValue('inherit')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('daily_weekly_budget_percent')
+    wrapper.unmount()
+  })
+
+  it('blocks invalid daily budget values before sending the account update', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-limit"]').setValue('101')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     authIsSimpleMode.value = true
   })

@@ -534,6 +534,9 @@ func shouldAutoPauseOpenAIAccountByQuota(ctx context.Context, account *Account) 
 	if account == nil || !account.IsOpenAI() {
 		return false, openAIQuotaAutoPauseDecision{}
 	}
+	if paused, decision := shouldPauseOpenAIDailyWeeklyBudget(ctx, account, time.Now()); paused {
+		return true, decision
+	}
 	// 自动用卡有独立阈值：达到消费阈值时必须先退出调度；仅达到普通暂停阈值时，
 	// 只有新鲜状态明确存在可用卡才继续放行到消费阈值。
 	if config := ResolveOpenAIAutoResetCreditConfig(account); config.Enabled {
@@ -1093,6 +1096,7 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 		}
 		return s.isBetterAccount(a, b)
 	})
+	prioritizeOpenAIDailyBudgetAccounts(ctx, eligible, requireCompact)
 	return eligible[0], compactBlocked, filterStats
 }
 
@@ -1386,6 +1390,16 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		} else {
 			selectionOrder = append(selectionOrder, available...)
 		}
+		budgetAccounts := make([]*Account, len(selectionOrder))
+		byID := make(map[int64]accountWithLoad, len(selectionOrder))
+		for i, item := range selectionOrder {
+			budgetAccounts[i] = item.account
+			byID[item.account.ID] = item
+		}
+		prioritizeOpenAIDailyBudgetAccounts(ctx, budgetAccounts, requireCompact)
+		for i, account := range budgetAccounts {
+			selectionOrder[i] = byID[account.ID]
+		}
 
 		for _, item := range selectionOrder {
 			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, item.account, platform, requestedModel, false, requiredCapability)
@@ -1426,6 +1440,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		if requireCompact {
 			ordered = prioritizeOpenAICompactAccounts(ordered)
 		}
+		prioritizeOpenAIDailyBudgetAccounts(ctx, ordered, requireCompact)
 		for _, acc := range ordered {
 			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, platform, requestedModel, false, requiredCapability)
 			if fresh == nil {
@@ -1476,6 +1491,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 	if requireCompact {
 		candidates = prioritizeOpenAICompactAccounts(candidates)
 	}
+	prioritizeOpenAIDailyBudgetAccounts(ctx, candidates, requireCompact)
 	for _, acc := range candidates {
 		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, platform, requestedModel, false, requiredCapability)
 		if fresh == nil {

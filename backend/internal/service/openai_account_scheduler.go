@@ -1048,8 +1048,30 @@ func (s *defaultOpenAIAccountScheduler) buildOpenAIAccountLoadPlan(
 	if plan.topK <= 0 {
 		plan.topK = 1
 	}
+	// Budget balancing needs the entire eligible pool; a small score-based TopK
+	// must not hide the accounts with the most daily headroom.
+	dailyBudgetEnabled := false
+	for _, candidate := range candidates {
+		if ResolveOpenAIDailyWeeklyBudgetLimit(ctx, candidate.account) > 0 {
+			plan.topK = len(candidates)
+			dailyBudgetEnabled = true
+			break
+		}
+	}
 
 	plan.selectionOrder = s.buildOpenAISelectionOrder(req, plan)
+	if dailyBudgetEnabled && req.StickyAccountID == 0 && req.StickyPreviousAccountID == 0 {
+		accounts := make([]*Account, len(plan.selectionOrder))
+		byID := make(map[int64]openAIAccountCandidateScore, len(accounts))
+		for i, candidate := range plan.selectionOrder {
+			accounts[i] = candidate.account
+			byID[candidate.account.ID] = candidate
+		}
+		prioritizeOpenAIDailyBudgetAccounts(ctx, accounts, req.RequireCompact)
+		for i, account := range accounts {
+			plan.selectionOrder[i] = byID[account.ID]
+		}
+	}
 	return plan
 }
 

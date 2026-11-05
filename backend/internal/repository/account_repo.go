@@ -65,11 +65,12 @@ var schedulerNeutralExtraKeyPrefixes = []string{
 }
 
 var schedulerNeutralExtraKeys = map[string]struct{}{
-	"codex_usage_updated_at":     {},
-	"codex_credits_snapshot":     {},
-	"codex_referral_snapshot":    {},
-	"grok_billing_snapshot":      {},
-	"session_window_utilization": {},
+	service.OpenAIDailyWeeklyBudgetStateKey: {},
+	"codex_usage_updated_at":                {},
+	"codex_credits_snapshot":                {},
+	"codex_referral_snapshot":               {},
+	"grok_billing_snapshot":                 {},
+	"session_window_utilization":            {},
 }
 
 const postgresParameterBatchSize = 50000
@@ -142,6 +143,8 @@ func createAccountRecord(ctx context.Context, client *dbent.Client, account *ser
 	if account == nil {
 		return service.ErrAccountNilInput
 	}
+	account.Extra = copyJSONMap(account.Extra)
+	delete(account.Extra, service.OpenAIDailyWeeklyBudgetStateKey)
 
 	builder := client.Account.Create().
 		SetName(account.Name).
@@ -534,6 +537,9 @@ func (r *accountRepository) updateLockedAccount(
 ) (*dbent.Account, error) {
 	extra, err := lockAndMergeAccountProbeExtra(ctx, client, account, explicitProbeEnabled, explicitRateSyncEnabled)
 	if err != nil {
+		return nil, err
+	}
+	if err := preserveDailyWeeklyBudgetSnapshot(ctx, client, account, extra); err != nil {
 		return nil, err
 	}
 	account.Extra = extra
@@ -2793,6 +2799,13 @@ func (r *accountRepository) UpdateExtra(ctx context.Context, id int64, updates m
 		return scoped.UpdateExtra(ctx, id, updates)
 	}
 	updates = stripCodexFingerprintSeedFromExtraUpdate(updates)
+	if internal, _ := ctx.Value(dailyWeeklyBudgetUpdateKey{}).(bool); !internal {
+		updates = copyJSONMap(updates)
+		delete(updates, service.OpenAIDailyWeeklyBudgetStateKey)
+		if _, hasWeeklyUsage := updates["codex_7d_used_percent"]; hasWeeklyUsage {
+			return r.updateDailyWeeklyBudgetSnapshot(ctx, id, updates)
+		}
+	}
 	if len(updates) == 0 {
 		return nil
 	}
@@ -3070,6 +3083,8 @@ func (r *accountRepository) BulkUpdate(ctx context.Context, ids []int64, updates
 		return 0, nil
 	}
 	updates.Extra = stripCodexFingerprintSeedFromExtraUpdate(updates.Extra)
+	updates.Extra = copyJSONMap(updates.Extra)
+	delete(updates.Extra, service.OpenAIDailyWeeklyBudgetStateKey)
 
 	setClauses := make([]string, 0, 8)
 	args := make([]any, 0, 8)
