@@ -790,6 +790,9 @@ export interface OpsAlertRuntimeSettings {
 }
 
 export interface OpsOpenAIAccountQuotaAutoPauseSettings {
+  daily_weekly_budget_percent?: number // Weekly percentage points per budget cycle; 0 disables.
+  weekly_budget_cycle_hours?: number // 1..168; missing/0 keeps the 24-hour default.
+  weekly_budget_reset_hour?: number // UTC+8 cycle anchor hour, 0..23.
   default_threshold_5h: number // 0~1，0 表示不启用全局默认 5h 阈值
   default_threshold_7d: number // 0~1，0 表示不启用全局默认 7d 阈值
 }

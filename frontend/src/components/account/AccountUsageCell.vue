@@ -1,5 +1,6 @@
 <template>
   <div ref="rootRef" v-if="showUsageWindows">
+    <OpenAIDailyBudgetUsage :account="account" />
     <!-- Anthropic OAuth and Setup Token accounts: fetch real usage data -->
     <template
       v-if="
@@ -709,6 +710,7 @@ import { formatCompactNumber } from '@/utils/format'
 import { isOfficialGeminiBaseUrl } from '@/utils/geminiExplicitCache'
 import { supportsAccountQuota } from '@/utils/accountQuota'
 import UsageProgressBar from './UsageProgressBar.vue'
+import OpenAIDailyBudgetUsage from './OpenAIDailyBudgetUsage.vue'
 import AccountQuotaInfo from './AccountQuotaInfo.vue'
 import ClaudeResetCreditsCell from './ClaudeResetCreditsCell.vue'
 import OpenAIQuotaResetCell from './OpenAIQuotaResetCell.vue'

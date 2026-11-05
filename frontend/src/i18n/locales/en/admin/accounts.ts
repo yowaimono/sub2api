@@ -1,5 +1,23 @@
 export default {
     accounts: {
+      dailyWeeklyBudget: {
+        title: 'Periodic weekly-allowance budget (%)',
+        globalTitle: 'Default weekly-allowance budget for OpenAI OAuth (%)',
+        globalHint: '0 disables the default. Accounts can override or opt out. Measured in weekly percentage points; defaults to a daily reset at 00:00 UTC+8.',
+        inherit: 'Use global default',
+        custom: 'Set an account cycle limit',
+        disabled: 'Exempt this account from periodic budgets',
+        hint: '10 allows 10 additional weekly percentage points per cycle: weekly usage increasing from 25% to 35% pauses the account until the next cycle. A weekly reset does not refill the cycle budget. In-flight requests and delayed reports may overshoot.',
+        invalid: 'Cycle budget must be a finite number between 0 and 100.',
+        cycleHours: 'Budget reset interval (hours)',
+        resetHour: 'Cycle anchor hour (UTC+8)',
+        nextReset: 'Next budget reset: {time} (UTC+8)',
+        cycleHint: 'Use 1–168 whole hours. For example, 6 resets every 6 hours; 24 with 08:00 resets daily at 08:00. Fixed, not rolling, windows are aligned to the selected hour on 1970-01-01 UTC+8. Changing the cycle reuses recorded consumption.',
+        cycleInheritHint: 'Leave hours blank and select the global anchor to inherit each setting independently. The usage below always shows the UTC+8 calendar-day total.',
+        invalidCycle: 'Cycle must be an integer from 1 to 168 hours; anchor hour must be an integer from 0 to 23.',
+        used: 'Weekly allowance used today: {percent} percentage points',
+        usageHint: 'This shows the UTC+8 calendar-day total; scheduling uses the configured budget cycle. Tracks increases in upstream weekly snapshots; the first snapshot establishes a baseline.',
+      },
       title: 'Account Management',
       description: 'Manage AI platform accounts and credentials',
       createAccount: 'Create Account',

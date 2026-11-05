@@ -2819,6 +2819,15 @@
         </div>
       </div>
 
+      <template v-if="account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow">
+        <OpenAIDailyBudgetSettings
+          v-model="dailyWeeklyBudgetLimit"
+          v-model:cycle-hours="weeklyBudgetCycleHours"
+          v-model:reset-hour="weeklyBudgetResetHour"
+        />
+        <OpenAIDailyBudgetUsage :account="account" />
+      </template>
+
       <div
         v-if="account?.platform === 'openai' && account?.type === 'oauth' && !isSparkShadow"
         class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600"
@@ -3411,6 +3420,8 @@ import type {
   TempUnschedulableScope
 } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
+import OpenAIDailyBudgetSettings from './OpenAIDailyBudgetSettings.vue'
+import OpenAIDailyBudgetUsage from './OpenAIDailyBudgetUsage.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Select from '@/components/common/Select.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
@@ -4090,6 +4101,9 @@ const interceptWarmupRequests = ref(false)
 const autoPauseOnExpired = ref(false)
 const autoPause5hThreshold = ref<number | null>(null)
 const autoPause7dThreshold = ref<number | null>(null)
+const dailyWeeklyBudgetLimit = ref<number | null>(null)
+const weeklyBudgetCycleHours = ref<number | null>(null)
+const weeklyBudgetResetHour = ref<number | null>(null)
 const autoPause5hDisabled = ref(false)
 const autoPause7dDisabled = ref(false)
 const autoResetCreditEnabled = ref(false)
@@ -4649,6 +4663,9 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 	openAIImageSizeTiers.value = readOpenAIImageSizeTiers(extra)
 	autoPause5hThreshold.value = typeof extra?.auto_pause_5h_threshold === 'number' ? extra.auto_pause_5h_threshold * 100 : null
 	autoPause7dThreshold.value = typeof extra?.auto_pause_7d_threshold === 'number' ? extra.auto_pause_7d_threshold * 100 : null
+	dailyWeeklyBudgetLimit.value = typeof extra?.daily_weekly_budget_percent === 'number' ? extra.daily_weekly_budget_percent : null
+	weeklyBudgetCycleHours.value = typeof extra?.weekly_budget_cycle_hours === 'number' ? extra.weekly_budget_cycle_hours : null
+	weeklyBudgetResetHour.value = typeof extra?.weekly_budget_reset_hour === 'number' ? extra.weekly_budget_reset_hour : null
 	autoPause5hDisabled.value = extra?.auto_pause_5h_disabled === true
 	autoPause7dDisabled.value = extra?.auto_pause_7d_disabled === true
 	autoResetCreditEnabled.value = extra?.auto_reset_credit_enabled === true
@@ -6281,6 +6298,27 @@ const handleSubmit = async () => {
 			delete newExtra.auto_pause_7d_disabled
 		}
 		if (props.account.type === 'oauth' && !isSparkShadow.value) {
+			if (dailyWeeklyBudgetLimit.value != null && (!Number.isFinite(dailyWeeklyBudgetLimit.value) || dailyWeeklyBudgetLimit.value < 0 || dailyWeeklyBudgetLimit.value > 100)) {
+				appStore.showError(t('admin.accounts.dailyWeeklyBudget.invalid'))
+				return
+			}
+			if (dailyWeeklyBudgetLimit.value == null) {
+				delete newExtra.daily_weekly_budget_percent
+			} else {
+				newExtra.daily_weekly_budget_percent = dailyWeeklyBudgetLimit.value
+			}
+			delete newExtra.codex_daily_weekly_budget
+			for (const [key, value, min, max] of [
+				['weekly_budget_cycle_hours', weeklyBudgetCycleHours.value, 1, 168],
+				['weekly_budget_reset_hour', weeklyBudgetResetHour.value, 0, 23]
+			] as const) {
+				if (value != null && (!Number.isInteger(value) || value < min || value > max)) {
+					appStore.showError(t('admin.accounts.dailyWeeklyBudget.invalidCycle'))
+					return
+				}
+				if (value == null) delete newExtra[key]
+				else newExtra[key] = value
+			}
 			newExtra.auto_reset_credit_enabled = autoResetCreditEnabled.value
 			newExtra.auto_reset_credit_5h_threshold = autoResetCredit5hThreshold.value / 100
 			newExtra.auto_reset_credit_7d_threshold = autoResetCredit7dThreshold.value / 100

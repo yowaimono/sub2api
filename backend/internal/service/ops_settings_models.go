@@ -113,8 +113,11 @@ type OpsAdvancedSettings struct {
 }
 
 type OpsOpenAIAccountQuotaAutoPauseSettings struct {
-	DefaultThreshold5h float64 `json:"default_threshold_5h"`
-	DefaultThreshold7d float64 `json:"default_threshold_7d"`
+	DefaultThreshold5h       float64 `json:"default_threshold_5h"`
+	DefaultThreshold7d       float64 `json:"default_threshold_7d"`
+	DailyWeeklyBudgetPercent float64 `json:"daily_weekly_budget_percent"`
+	WeeklyBudgetCycleHours   int     `json:"weekly_budget_cycle_hours"`
+	WeeklyBudgetResetHour    int     `json:"weekly_budget_reset_hour"`
 }
 
 type OpsDataRetentionSettings struct {

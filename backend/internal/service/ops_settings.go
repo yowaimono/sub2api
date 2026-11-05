@@ -439,6 +439,16 @@ func validateOpsAdvancedSettings(cfg *OpsAdvancedSettings) error {
 	if cfg == nil {
 		return errors.New("invalid config")
 	}
+	if !validWeeklyPercent(cfg.OpenAIAccountQuotaAutoPause.DailyWeeklyBudgetPercent) {
+		return errors.New("daily_weekly_budget_percent must be a finite number between 0 and 100")
+	}
+	// Zero/missing cycle hours is the backward-compatible daily default.
+	if hours := cfg.OpenAIAccountQuotaAutoPause.WeeklyBudgetCycleHours; hours < 0 || hours > 168 {
+		return errors.New("weekly_budget_cycle_hours must be between 1 and 168 (0 uses the 24-hour default)")
+	}
+	if hour := cfg.OpenAIAccountQuotaAutoPause.WeeklyBudgetResetHour; hour < 0 || hour > 23 {
+		return errors.New("weekly_budget_reset_hour must be between 0 and 23")
+	}
 	// 保留天数：0 表示每次清理全部，1-365 表示按天数保留。
 	if cfg.DataRetention.ErrorLogRetentionDays < 0 || cfg.DataRetention.ErrorLogRetentionDays > 365 {
 		return errors.New("error_log_retention_days must be between 0 and 365")

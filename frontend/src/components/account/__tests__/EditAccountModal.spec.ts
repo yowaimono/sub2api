@@ -330,6 +330,73 @@ function mountModal(account = buildAccount(), renderGroupSelector = false) {
 }
 
 describe('EditAccountModal', () => {
+  it('saves custom daily weekly points without returning server-managed usage', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10, codex_daily_weekly_budget: { day: '2026-11-05', used_percent: 5 } }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-limit"]').setValue('30')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.daily_weekly_budget_percent).toBe(30)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('codex_daily_weekly_budget')
+    wrapper.unmount()
+  })
+
+  it('saves cycle and anchor overrides, then restores independent inheritance', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10, weekly_budget_cycle_hours: 24, weekly_budget_reset_hour: 0 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="weekly-budget-cycle-hours"]').setValue('6')
+    await wrapper.get('[data-testid="weekly-budget-reset-hour"]').setValue('8')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).toMatchObject({ weekly_budget_cycle_hours: 6, weekly_budget_reset_hour: 8 })
+    updateAccountMock.mockClear()
+    await wrapper.get('[data-testid="weekly-budget-cycle-hours"]').setValue('')
+    await wrapper.get('[data-testid="weekly-budget-reset-hour"]').setValue('')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('weekly_budget_cycle_hours')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('weekly_budget_reset_hour')
+    wrapper.unmount()
+  })
+
+  it.each(['0', '169', '1.5'])('rejects invalid cycle hours %s without an account update', async (hours) => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="weekly-budget-cycle-hours"]').setValue(hours)
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('saves explicit daily budget exemption and can restore inheritance', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-mode"]').setValue('disabled')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra?.daily_weekly_budget_percent).toBe(0)
+    updateAccountMock.mockClear()
+    await wrapper.get('[data-testid="daily-weekly-budget-mode"]').setValue('inherit')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).not.toHaveProperty('daily_weekly_budget_percent')
+    wrapper.unmount()
+  })
+
+  it('blocks invalid daily budget values before sending the account update', async () => {
+    const account = buildOpenAIOAuthParentAccount()
+    account.extra = { daily_weekly_budget_percent: 10 }
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    const wrapper = mountModal(account)
+    await wrapper.get('[data-testid="daily-weekly-budget-limit"]').setValue('101')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    expect(updateAccountMock).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   beforeEach(() => {
     authIsSimpleMode.value = true
   })
