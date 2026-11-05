@@ -8,6 +8,16 @@ import { buildModelMappingObject, getModelsByPlatform, getPresetMappingsByPlatfo
 import { BUILTIN_PLATFORM_CATALOG, resetPlatformCatalog, setPlatformCatalog } from '@/constants/platformCatalog'
 
 describe('useModelWhitelist', () => {
+  it('OpenAI 白名单包含两个 GPT Image 2.6 模型并保存各自的模型 ID', () => {
+    const models = getModelsByPlatform('openai')
+    expect(models).toContain('gpt-image-2.6-flare')
+    expect(models).toContain('gpt-image-2.6-sunburst')
+    expect(models).not.toContain('gpt-image-2.6')
+    const mapping = buildModelMappingObject('whitelist', models, [])
+    expect(mapping?.['gpt-image-2.6-flare']).toBe('gpt-image-2.6-flare')
+    expect(mapping?.['gpt-image-2.6-sunburst']).toBe('gpt-image-2.6-sunburst')
+  })
+
   it('平台清单中没有内置模型列表的多协议供应商不预填白名单', () => {
     setPlatformCatalog({
       ...BUILTIN_PLATFORM_CATALOG,

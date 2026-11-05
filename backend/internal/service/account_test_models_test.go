@@ -45,6 +45,8 @@ func TestFetchOpenAIAccountModelsOAuthPopulatesPickerFields(t *testing.T) {
 	}
 	require.Contains(t, ids, "gpt-image-2.5-flare")
 	require.Contains(t, ids, "gpt-image-2.5-sunburst")
+	require.Contains(t, ids, "gpt-image-2.6-flare")
+	require.Contains(t, ids, "gpt-image-2.6-sunburst")
 
 	after, err := gateway.FetchOpenAIModelsList(ctx, account)
 	require.NoError(t, err)

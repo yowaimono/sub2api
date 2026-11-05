@@ -18,7 +18,7 @@ func directImagesTestAccount() *Account {
 }
 
 func TestCodexDirectImagesRouting(t *testing.T) {
-	for _, model := range []string{"gpt-image-1.5", "gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare-2026-09-08", "gpt-image-2.5-sunburst-2026-09-08"} {
+	for _, model := range []string{"gpt-image-1.5", "gpt-image-2", "gpt-image-2.5-flare", "gpt-image-2.5-sunburst", "gpt-image-2.5-flare-2026-09-08", "gpt-image-2.5-sunburst-2026-09-08", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst"} {
 		t.Run(model, func(t *testing.T) {
 			body := []byte(fmt.Sprintf(`{"model":%q,"prompt":"  原样保留 prompt  ","quality":"max","size":"auto","response_format":"url","extra":{"preserve":true}}`, model))
 			c, rec := newOpenAIImagesTestContext(t, body)
@@ -71,7 +71,7 @@ func TestCodexDirectImagesMappingBeforeRouting(t *testing.T) {
 			require.Equal(t, "gpt-image-2.5-flare", gjson.GetBytes(upstream.lastBody, "model").String())
 		})
 	}
-	for _, model := range []string{"gpt-image-1", "gpt-image-future"} {
+	for _, model := range []string{"gpt-image-1", "gpt-image-future", "gpt-image-2.6", "gpt-image-2.6-flare-unknown"} {
 		body, target, err := buildOpenAIImagesOAuthPayload(&OpenAIImagesRequest{Prompt: "draw"}, model)
 		require.NoError(t, err)
 		require.Equal(t, chatgptCodexURL, target)
