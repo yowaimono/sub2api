@@ -66,6 +66,11 @@ echo old > /tmp/app-state
 if SSH_ORIGINAL_COMMAND='deploy invalid invalid' bash /src/receive-release.sh </dev/null; then exit 1; fi
 test ! -e /tmp/docker-calls
 
+for invalid_tag in v0.2 v0.2.20-extra v00.2.20 v0.02.20 v0.2.020 ../v0.2.20; do
+  if SSH_ORIGINAL_COMMAND="deploy $invalid_tag $TEST_SHA" bash /src/receive-release.sh </dev/null; then exit 1; fi
+done
+test ! -e /tmp/docker-calls
+
 # Label failure leaves the running service and Compose configuration untouched.
 if printf 'image archive' | gzip | TEST_MODE=bad-label SSH_ORIGINAL_COMMAND="deploy prod-v2026.11.05.1 $TEST_SHA" bash /src/receive-release.sh; then exit 1; fi
 test "$(cat /tmp/app-state)" = old
@@ -84,6 +89,16 @@ test -f data/preserved
 SSH_ORIGINAL_COMMAND='rollback prod-v2026.11.05.2' bash /src/receive-release.sh </dev/null
 test "$(cat /tmp/app-state)" = old
 test -f releases/prod-v2026.11.05.2/rolled-back
+
+# Explicit semantic-version releases use the same backup and rollback path.
+printf 'image archive' | gzip | SSH_ORIGINAL_COMMAND="deploy v0.2.20 $TEST_SHA" bash /src/receive-release.sh
+test "$(cat /tmp/app-state)" = new
+test -s releases/v0.2.20/database.dump
+test -f releases/v0.2.20/success
+grep -q 'image: ghcr.io/yowaimono/sub2api:v0.2.20' docker-compose.release.yml
+SSH_ORIGINAL_COMMAND='rollback v0.2.20' bash /src/receive-release.sh </dev/null
+test "$(cat /tmp/app-state)" = old
+test -f releases/v0.2.20/rolled-back
 
 # A post-switch invariant failure automatically restores the old app.
 if printf 'image archive' | gzip | TEST_MODE=bad-counts SSH_ORIGINAL_COMMAND="deploy prod-v2026.11.05.3 $TEST_SHA" bash /src/receive-release.sh; then exit 1; fi

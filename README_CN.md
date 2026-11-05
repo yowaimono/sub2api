@@ -737,11 +737,15 @@ go generate ./cmd/server
 
 ## OpenAI 图片模型
 
-支持 `gpt-image-2.5-flare`、`gpt-image-2.5-sunburst` 及其 `2026-09-08` 日期快照，可通过 `/v1/images/generations`、`/v1/images/edits` 调用。`quality` 支持 `xhigh`、`max`、`auto`，合法自定义尺寸和图片 usage 明细保持透传。
+支持 `gpt-image-2.6-flare`、`gpt-image-2.6-sunburst`，以及 `gpt-image-2.5-flare`、`gpt-image-2.5-sunburst` 及其 `2026-09-08` 日期快照，可通过 `/v1/images/generations`、`/v1/images/edits` 调用。使用完整模型 ID；默认列表不提供未经确认的 `gpt-image-2.6` 别名或日期快照。合法自定义尺寸、`quality` 和图片 usage 明细保持透传，具体取值由所选模型校验。
 
-OAuth / Setup Token 图片请求使用 Responses 主控模型调用 `image_generation` 工具，默认主控为 `gpt-5.6-luna`。可设置 `SUB2API_IMAGES_MAIN_MODEL` 切换为账号支持的文本模型；Docker Compose 用户修改 `.env` 后执行 `docker compose up -d` 重建容器。该配置不会替换所选图片模型，也不会覆盖 `/v1/responses` 请求中已经提供的文本主控模型。
+OAuth / Setup Token 的 2.6 和 2.5 图片请求优先直调 Codex Images 端点；仅当端点返回 404/405 时回退到 Responses 的 `image_generation` 工具，其他错误保持原有处理。Responses 默认主控为 `gpt-5.6-luna`。可设置 `SUB2API_IMAGES_MAIN_MODEL` 切换为账号支持的文本模型；Docker Compose 用户修改 `.env` 后执行 `docker compose up -d` 重建容器。该配置不会替换所选图片模型，也不会覆盖 `/v1/responses` 请求中已经提供的文本主控模型。
 
-升级后，无模型限制的账号自动支持新模型。已有显式账号映射或分组白名单需要加入两个 2.5 模型（日期快照按需加入）；升级不会自动扩大管理员设置的模型权限。新模型内置价格包含官方文本输入、图片输入和图片输出 token 费率，远端价格表尚未更新时使用内置 2.5 价格；实际按次或按 token 计费仍由既有分组/渠道配置决定。
+JSON 生图、JSON 改图和 multipart 改图会透传显式指定的 `complexity`，该字段独立于 `quality`；省略时不添加默认值。参数的支持范围由实际所用的上游模型和端点决定。
+
+2.6 的 `complexity` 支持 `low`、`medium`、`high`，可与 `quality` 分别设置；省略时由上游采用默认值。此接入覆盖静态图片生成、编辑、流式输出及 token 计费；不代表已验证 ChatGPT OAuth 对 2.6 的 markup、SVG 或 GIF 等新增功能的支持。
+
+升级后，无模型限制的账号自动支持新模型。已有显式账号映射或分组白名单需要加入 `gpt-image-2.6-flare` 和 `gpt-image-2.6-sunburst`（2.5 及日期快照按需保留）；升级不会自动扩大管理员设置的模型权限。2.6 内置价格包含官方文本输入/缓存、图片输入/缓存和图片输出 token 费率，远端价格表尚未更新时使用内置 2.6 价格；显式价格配置仍优先，实际按次或按 token 计费仍由既有分组/渠道配置决定。价格来源：[Flare](https://developers.openai.com/api/docs/models/gpt-image-2.6-flare)、[Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst)。
 
 ## 简易模式
 

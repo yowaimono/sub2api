@@ -3164,7 +3164,9 @@ func (s *AccountTestService) testOpenAIImageOAuth(c *gin.Context, ctx context.Co
 	parsed.ExplicitSize = parsed.Size != ""
 	applyOpenAIImagesDefaults(parsed)
 
-	upstreamModel := account.GetMappedModel(parsed.Model)
+	// testOpenAIAccountConnection already applied the account mapping once.
+	// Reapplying it here can route a chained mapping to a different model.
+	upstreamModel := parsed.Model
 	responsesBody, targetURL, err := buildOpenAIImagesOAuthPayload(parsed, upstreamModel)
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to build image request: %s", err.Error()))

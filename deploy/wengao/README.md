@@ -24,10 +24,16 @@ provision a fresh key with the helper before the next deployment or rollback.
 ## Deploy
 
 After merging the intended source to this fork's `main`, create an immutable Git
-tag `prod-vYYYY.MM.DD.N` pointing to that exact commit. Dispatch the workflow on
+tag `vMAJOR.MINOR.PATCH` (for example `v0.2.20`) or `prod-vYYYY.MM.DD.N`
+pointing to that exact commit. Dispatch the workflow on
 `main` with `operation=deploy` and that tag. The workflow builds Linux/amd64,
 checks the embedded commit, publishes the same immutable image to GHCR, and
 streams the image over SSH. No registry password is stored on the VPS.
+
+For this customized production path, use **Wengao Production** as the sole image
+publisher for the selected tag. A `v*` tag can also trigger the inherited
+**Release** workflow; cancel that duplicate run before dispatching production
+so two workflows cannot race to publish the same image tag.
 
 Before switching the application, the receiver saves a PostgreSQL custom-format
 dump, application/configuration archive, previous image alias, mounts and record
