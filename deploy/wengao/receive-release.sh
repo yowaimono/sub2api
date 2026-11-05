@@ -9,7 +9,7 @@ exec 9>/run/lock/wengao-sub2api-deploy.lock
 flock -n 9 || { echo 'Another Sub2API deployment is running.' >&2; exit 1; }
 
 read -r operation tag revision extra <<< "${SSH_ORIGINAL_COMMAND:-}"
-[[ "$tag" =~ ^prod-v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*$ ]]
+[[ "$tag" =~ ^(v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)|prod-v[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*)$ ]]
 [[ -z "${extra:-}" ]]
 release="/opt/sub2api/releases/$tag"
 base=(docker compose -f docker-compose.local.yml -f docker-compose.proxy.yml)
