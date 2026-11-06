@@ -101,7 +101,9 @@ backup_paths=(.env docker-compose.local.yml docker-compose.proxy.yml data)
 for path in Caddyfile caddy_data caddy_config docker-compose.release.yml; do
   if [[ -e "$path" ]]; then backup_paths+=("$path"); fi
 done
-tar -czf "$release/config-data.tar.gz" "${backup_paths[@]}"
+# Runtime logs can change or rotate while the application serves requests.
+# Keep them on the host; archive configuration and application data strictly.
+tar --exclude='data/logs' -czf "$release/config-data.tar.gz" "${backup_paths[@]}"
 tar -tzf "$release/config-data.tar.gz" >/dev/null
 db_counts() {
   docker exec sub2api-postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT (SELECT count(*) FROM accounts), (SELECT count(*) FROM groups), (SELECT count(*) FROM api_keys);"'

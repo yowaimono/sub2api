@@ -37,7 +37,10 @@ so two workflows cannot race to publish the same image tag.
 
 Before switching the application, the receiver saves a PostgreSQL custom-format
 dump, application/configuration archive, previous image alias, mounts and record
-counts under `/opt/sub2api/releases/<tag>/`, accessible only to root. It uses
+counts under `/opt/sub2api/releases/<tag>/`, accessible only to root.
+The archive excludes the live `data/logs` directory, which remains on the host;
+log writes and rotation must not interrupt the configuration/data backup.
+It uses
 `docker-compose.local.yml`, `docker-compose.proxy.yml` and the new
 `docker-compose.release.yml`; use all three for subsequent Compose operations.
 Only `sub2api` is recreated with `--no-deps --pull never`.
