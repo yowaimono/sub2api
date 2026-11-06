@@ -7,6 +7,9 @@ mkdir -p /opt/sub2api/releases /opt/sub2api/data /run/lock
 cd /opt/sub2api
 printf 'secret=test-only\n' > .env
 touch docker-compose.local.yml docker-compose.proxy.yml data/preserved
+mkdir -p data/logs data/plugins
+printf 'runtime log\n' > data/logs/sub2api.log
+printf 'plugin state\n' > data/plugins/preserved
 cat > /usr/local/bin/docker <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -83,6 +86,11 @@ test "$(cat /tmp/app-state)" = new
 test -f releases/prod-v2026.11.05.2/success
 test -s releases/prod-v2026.11.05.2/database.dump
 tar -tzf releases/prod-v2026.11.05.2/config-data.tar.gz | grep -q data/preserved
+tar -tzf releases/prod-v2026.11.05.2/config-data.tar.gz > /tmp/backup-contents
+grep -qx .env /tmp/backup-contents
+grep -qx data/plugins/preserved /tmp/backup-contents
+! grep -q '^data/logs' /tmp/backup-contents
+test -s data/logs/sub2api.log
 test -f data/preserved
 
 # Manual rollback restores only the app image.
