@@ -47,3 +47,30 @@ func TestOpenAIGatewayHandlerImages_DisabledGroupRejectsBeforeScheduling(t *test
 	require.Equal(t, "permission_error", gjson.GetBytes(rec.Body.Bytes(), "error.type").String())
 	require.Contains(t, rec.Body.String(), service.ImageGenerationPermissionMessage())
 }
+
+func TestOpenAIGatewayHandlerImages_GIFSVGInvalidOptionsRejectBeforeScheduling(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, body := range []string{
+		`{"model":"gpt-image-2.6-flare","prompt":"animate","output_format":"gif","stream":true}`,
+		`{"model":"gpt-image-2.6-flare","prompt":"animate","output_format":"gif","frame_count":17}`,
+		`{"model":"gpt-image-2.6-sunburst","prompt":"logo","output_format":"svg","n":2}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewBufferString(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{ID: 222, User: &service.User{ID: 333}})
+			c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 333, Concurrency: 1})
+			h := &OpenAIGatewayHandler{
+				gatewayService:      &service.OpenAIGatewayService{},
+				billingCacheService: &service.BillingCacheService{},
+				apiKeyService:       &service.APIKeyService{},
+				concurrencyHelper:   &ConcurrencyHelper{concurrencyService: &service.ConcurrencyService{}},
+			}
+			h.Images(c)
+			require.Equal(t, http.StatusBadRequest, rec.Code)
+			require.Equal(t, "invalid_request_error", gjson.GetBytes(rec.Body.Bytes(), "error.type").String())
+		})
+	}
+}
