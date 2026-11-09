@@ -151,6 +151,21 @@ func (s *OpenAICodexUsageSnapshot) Normalize() *NormalizedCodexLimits {
 	if s == nil {
 		return nil
 	}
+	// A zero-length slot explicitly disables that window. OpenAI can return
+	// a full zero-valued slot instead of omitting it on weekly-only plans.
+	// Work on a copy so the raw response remains available for diagnostics.
+	active := *s
+	if active.PrimaryWindowMinutes != nil && *active.PrimaryWindowMinutes <= 0 {
+		active.PrimaryUsedPercent = nil
+		active.PrimaryResetAfterSeconds = nil
+		active.PrimaryWindowMinutes = nil
+	}
+	if active.SecondaryWindowMinutes != nil && *active.SecondaryWindowMinutes <= 0 {
+		active.SecondaryUsedPercent = nil
+		active.SecondaryResetAfterSeconds = nil
+		active.SecondaryWindowMinutes = nil
+	}
+	s = &active
 
 	result := &NormalizedCodexLimits{}
 

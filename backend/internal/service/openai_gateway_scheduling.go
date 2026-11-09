@@ -736,7 +736,7 @@ func openAIQuotaWindowReset(extra map[string]any, window string, now time.Time) 
 
 // 绝对时间优先；相对倒计时必须锚定快照采样时间，不能随每次评分向后滑动。
 func openAICodexWindowResetAt(extra map[string]any, window string) (time.Time, bool) {
-	if len(extra) == 0 {
+	if len(extra) == 0 || openAICodexWindowExplicitlyDisabled(extra, window) {
 		return time.Time{}, false
 	}
 	if resetAtRaw, ok := extra["codex_"+window+"_reset_at"]; ok {
@@ -756,13 +756,20 @@ func openAICodexWindowResetAt(extra map[string]any, window string) (time.Time, b
 }
 
 func readOpenAIQuotaUsedPercent(extra map[string]any, window string) float64 {
-	if len(extra) == 0 {
+	if len(extra) == 0 || openAICodexWindowExplicitlyDisabled(extra, window) {
 		return 0
 	}
 	if value, ok := resolveAccountExtraNumber(extra, "codex_"+window+"_used_percent"); ok {
 		return value
 	}
 	return 0
+}
+
+// Missing window length is unknown (legacy snapshots), while an explicit
+// non-positive length is an upstream signal that this window is inactive.
+func openAICodexWindowExplicitlyDisabled(extra map[string]any, window string) bool {
+	minutes, ok := resolveAccountExtraNumber(extra, "codex_"+window+"_window_minutes")
+	return ok && minutes <= 0
 }
 
 type openAIQuotaAutoPauseCtxKey struct{}

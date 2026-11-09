@@ -1542,7 +1542,7 @@ func windowStatsFromAccountStats(stats *usagestats.AccountStats) *WindowStats {
 }
 
 func buildCodexUsageProgressFromExtra(extra map[string]any, window string, now time.Time) *UsageProgress {
-	if len(extra) == 0 {
+	if len(extra) == 0 || openAICodexWindowExplicitlyDisabled(extra, window) {
 		return nil
 	}
 
@@ -1609,6 +1609,9 @@ func hasOpenAIWeeklyOnlySnapshot(extra map[string]any) bool {
 	weeklyMinutes, hasWeekly := resolveAccountExtraNumber(extra, "codex_7d_window_minutes")
 	if !hasWeekly || weeklyMinutes <= 360 {
 		return false
+	}
+	if openAICodexWindowExplicitlyDisabled(extra, "5h") {
+		return true
 	}
 	_, hasShortWindow := resolveAccountExtraNumber(extra, "codex_5h_window_minutes")
 	_, hasShortUsage := resolveAccountExtraNumber(extra, "codex_5h_used_percent")
