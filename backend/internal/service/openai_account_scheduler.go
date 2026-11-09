@@ -3130,10 +3130,12 @@ type openAICanonicalQuotaWindow struct {
 
 // 规范字段优先；历史原始字段复用写入端 Normalize 的窗口分类，不能固定把 primary 当作 7d。
 func openAICanonicalQuotaWindows(extra map[string]any, now time.Time) (window5h, window7d openAICanonicalQuotaWindow) {
-	if used, ok := resolveAccountExtraNumber(extra, "codex_5h_used_percent"); ok {
+	disabled5h := openAICodexWindowExplicitlyDisabled(extra, "5h")
+	disabled7d := openAICodexWindowExplicitlyDisabled(extra, "7d")
+	if used, ok := resolveAccountExtraNumber(extra, "codex_5h_used_percent"); ok && !disabled5h {
 		window5h = openAICanonicalQuotaWindow{usedPercent: used, hasUsed: true, reset: openAIQuotaWindowReset(extra, "5h", now)}
 	}
-	if used, ok := resolveAccountExtraNumber(extra, "codex_7d_used_percent"); ok {
+	if used, ok := resolveAccountExtraNumber(extra, "codex_7d_used_percent"); ok && !disabled7d {
 		window7d = openAICanonicalQuotaWindow{usedPercent: used, hasUsed: true, reset: openAIQuotaWindowReset(extra, "7d", now)}
 	}
 	if window5h.hasUsed && window7d.hasUsed {
@@ -3168,10 +3170,10 @@ func openAICanonicalQuotaWindows(extra map[string]any, now time.Time) (window5h,
 		}
 		return openAICanonicalQuotaWindow{usedPercent: *used, hasUsed: true, reset: openAIQuotaWindowReset(extra, window, now)}
 	}
-	if !window5h.hasUsed {
+	if !window5h.hasUsed && !disabled5h {
 		window5h = fromRaw(normalized.Used5hPercent)
 	}
-	if !window7d.hasUsed {
+	if !window7d.hasUsed && !disabled7d {
 		window7d = fromRaw(normalized.Used7dPercent)
 	}
 	return window5h, window7d
