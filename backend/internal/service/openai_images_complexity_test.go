@@ -157,7 +157,7 @@ func TestOpenAIImagesComplexityRequiresNativeCapability(t *testing.T) {
 }
 
 func TestOpenAIImagesComplexityResponsesFallback(t *testing.T) {
-	for _, model := range []string{"gpt-image-2.5-flare", "gpt-image-2.6-flare", "gpt-image-2.6-sunburst"} {
+	for _, model := range []string{"gpt-image-2.5-flare", "gpt-image-2.5-sunburst"} {
 		for _, status := range []int{http.StatusNotFound, http.StatusMethodNotAllowed} {
 			t.Run(fmt.Sprintf("%s/%d", model, status), func(t *testing.T) {
 				body := []byte(fmt.Sprintf(`{"model":%q,"prompt":"draw a red cup","quality":"medium","complexity":"high"}`, model))

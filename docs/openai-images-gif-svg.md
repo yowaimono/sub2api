@@ -68,7 +68,7 @@ Invalid combinations return HTTP 400 before account scheduling or generation.
 GIF and SVG requests are never retried through the Responses image-generation
 tool when the OAuth Images endpoint returns 404/405. The upstream error is
 reported instead of silently degrading to a static raster image. Existing
-PNG/JPEG/WebP fallback behavior is unchanged.
+GPT Image 2.6 always uses the native endpoint, including for PNG, JPEG, and WebP. For older models, eligible static requests can still fall back to Responses when the native endpoint returns HTTP 404 or 405.
 
 This change does not alter billing configuration or the choice between token
 and per-image billing. It requires no new environment variables or database
