@@ -193,7 +193,7 @@ func TestGPTImage26NativeOptions(t *testing.T) {
 			if multipartInput {
 				var buf bytes.Buffer
 				writer := multipart.NewWriter(&buf)
-				for key, value := range map[string]string{"model": "gpt-image-2.6-flare", "prompt": "edit", "complexity": "low", "frame_count": "2", "frame_duration_ms": "100"} {
+				for key, value := range map[string]string{"model": "gpt-image-2.6-flare", "prompt": "edit", "complexity": "low"} {
 					require.NoError(t, writer.WriteField(key, value))
 				}
 				for _, name := range []string{"image", "markup"} {
