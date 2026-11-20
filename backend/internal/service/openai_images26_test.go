@@ -180,7 +180,7 @@ func TestGPTImage26NativeOptions(t *testing.T) {
 			require.False(t, gjson.GetBytes(payload, "svg.ignored").Exists())
 		}
 		_, err = buildOpenAIImagesResponsesRequest(parsed, parsed.Model)
-		require.ErrorContains(t, err, "native Images endpoint", "native options must not disappear during a legacy fallback")
+		require.ErrorContains(t, err, "requires the Images API", "GIF and SVG output must not disappear during a legacy fallback")
 		upstream := &httpUpstreamRecorder{resp: openAIImagesJSONResponse()}
 		_, err = newOpenAIImagesTestService(upstream).ForwardImages(context.Background(), c, newOpenAIImagesAPIKeyAccount(), body, parsed, "")
 		require.NoError(t, err)

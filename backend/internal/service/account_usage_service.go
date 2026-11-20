@@ -1069,14 +1069,17 @@ func applyExtraToUsage(usage *UsageInfo, extra map[string]any, now time.Time) {
 			usage.UpdatedAt = &observedAt
 		}
 	}
+	shortUsage, hasShortUsage := extra["codex_5h_used_percent"]
 	if progress := buildCodexUsageProgressFromExtra(extra, "5h", now); progress != nil {
 		usage.FiveHour = progress
-	} else if hasOpenAIWeeklyOnlySnapshot(extra) {
+	} else if (hasShortUsage && shortUsage == nil) || openAICodexWindowExplicitlyDisabled(extra, "5h") || hasOpenAIWeeklyOnlySnapshot(extra) {
 		// The upstream explicitly removed the short window.
 		usage.FiveHour = nil
 	}
 	if progress := buildCodexUsageProgressFromExtra(extra, "7d", now); progress != nil {
 		usage.SevenDay = progress
+	} else if openAICodexWindowExplicitlyDisabled(extra, "7d") {
+		usage.SevenDay = nil
 	}
 }
 
