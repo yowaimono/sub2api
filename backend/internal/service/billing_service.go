@@ -354,17 +354,6 @@ func NewBillingService(cfg *config.Config, pricingService *PricingService) *Bill
 // initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）
 // 价格单位：USD per token（与LiteLLM格式一致）
 func (s *BillingService) initFallbackPricing() {
-	// Keep exact Image 2.6 rates visible to token-pricing detection.
-	imagePricing := openAIGPTImage25FallbackPricing
-	for _, model := range []string{"gpt-image-2.6-flare", "gpt-image-2.6-sunburst"} {
-		s.fallbackPrices[model] = &ModelPricing{
-			InputPricePerToken:          imagePricing.InputCostPerToken,
-			CacheReadPricePerToken:      imagePricing.CacheReadInputTokenCost,
-			ImageInputPricePerToken:     imagePricing.InputCostPerImageToken,
-			ImageCacheReadPricePerToken: imagePricing.CacheReadInputImageTokenCost,
-			ImageOutputPricePerToken:    imagePricing.OutputCostPerImageToken,
-		}
-	}
 	// Claude 4.5 Opus
 	s.fallbackPrices["claude-opus-4.5"] = &ModelPricing{
 		InputPricePerToken:         5e-6,    // $5 per MTok
@@ -1164,11 +1153,27 @@ func (s *BillingService) initFallbackPricing() {
 	}
 }
 
+// gptImage26FallbackPricing returns exact token pricing for the supported
+// Image 2.6 models, even when no dynamic catalog has been loaded.
+func gptImage26FallbackPricing(model string) *ModelPricing {
+	if model != "gpt-image-2.6-flare" && model != "gpt-image-2.6-sunburst" {
+		return nil
+	}
+	p := openAIGPTImage25FallbackPricing
+	return &ModelPricing{
+		InputPricePerToken:          p.InputCostPerToken,
+		CacheReadPricePerToken:      p.CacheReadInputTokenCost,
+		ImageInputPricePerToken:     p.InputCostPerImageToken,
+		ImageCacheReadPricePerToken: p.CacheReadInputImageTokenCost,
+		ImageOutputPricePerToken:    p.OutputCostPerImageToken,
+	}
+}
+
 // getFallbackPricing 根据模型系列获取回退价格
 func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	modelLower := normalizeAntigravityClaudeTierAlias(strings.ToLower(model))
-	if modelLower == "gpt-image-2.6-flare" || modelLower == "gpt-image-2.6-sunburst" {
-		return s.fallbackPrices[modelLower]
+	if pricing := gptImage26FallbackPricing(modelLower); pricing != nil {
+		return pricing
 	}
 	if modelLower == "jev-latest" {
 		return s.fallbackPrices["jev-latest"]
@@ -1539,8 +1544,7 @@ func (s *BillingService) HasIdentifiedTokenPricing(model string) bool {
 			return true
 		}
 	}
-	pricing, ok := s.fallbackPrices[model]
-	return ok && pricing != nil
+	return s.fallbackPrices[model] != nil || gptImage26FallbackPricing(model) != nil
 }
 
 // GetModelPricing 获取模型价格配置
