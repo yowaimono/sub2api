@@ -366,6 +366,9 @@ func buildOpenAIImagesResponsesRequest(parsed *OpenAIImagesRequest, toolModel st
 	if requiresOpenAIImagesAPI(parsed) {
 		return nil, fmt.Errorf("output_format=%s requires the Images API; Responses fallback is unavailable", parsed.OutputFormat)
 	}
+	if parsed.MarkupImageURL != "" || parsed.MarkupUpload != nil || parsed.SVG != nil || parsed.FrameCount != nil || parsed.FrameDurationMS != nil {
+		return nil, fmt.Errorf("markup, SVG author options and GIF frame controls require the native Images endpoint")
+	}
 	prompt := strings.TrimSpace(parsed.Prompt)
 	if prompt == "" {
 		return nil, fmt.Errorf("prompt is required")
@@ -1922,7 +1925,7 @@ func (s *OpenAIGatewayService) forwardOpenAIImagesOAuth(
 		respBody := s.readUpstreamErrorBody(resp)
 		_ = resp.Body.Close()
 		respBody = s.redactAgentIdentitySensitiveBody(upstreamCtx, account, respBody)
-		if direct && !requiresOpenAIImagesAPI(parsed) && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed) {
+		if direct && !requiresCodexDirectImages(upstreamModel) && !requiresOpenAIImagesAPI(parsed) && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed) {
 			return s.forwardOpenAIImagesOAuth(withOpenAIImagesForceResponses(ctx), c, account, parsed, channelMappedModel)
 		}
 		if !agentIdentityTaskRecoveryWasTried(ctx) && s.isAgentIdentityAccount(ctx, account) && isAgentIdentityTaskInvalidHTTPResponse(resp.StatusCode, respBody) {
